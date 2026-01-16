@@ -1,267 +1,255 @@
 import * as THREE from 'three';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
-// Import Sampler untuk menyebar titik di permukaan teks secara merata
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 
 // --- SETUP SCENE ---
 const canvas = document.querySelector('.output_canvas');
 const scene = new THREE.Scene();
-// Mundurkan kamera lebih jauh agar objek besar terlihat utuh
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 2000);
-camera.position.z = 50;
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 50; 
 
-const renderer = new THREE.WebGLRenderer({ 
-    canvas: canvas, 
-    alpha: true, 
-    antialias: true 
-});
+const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// --- LOAD TEXTURE PARTIKEL (BULAT) ---
 const textureLoader = new THREE.TextureLoader();
-// Menggunakan gambar 'spark' standar Three.js agar partikel bulat dan bercahaya
-const particleTexture = textureLoader.load('https://threejs.org/examples/textures/sprites/spark1.png');
+const particleTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/spark1.png');
 
-
-// --- SISTEM PARTIKEL ---
-const particleCount = 8000; // Jumlah partikel ditingkatkan agar teks lebih jelas
+// --- PARTICLE SYSTEM ---
+const particleCount = 9000;
 let currentShape = 'scatter';
 
 const geometry = new THREE.BufferGeometry();
 const positions = new Float32Array(particleCount * 3);
 const targets = new Float32Array(particleCount * 3);
 const colors = new Float32Array(particleCount * 3);
-const sizes = new Float32Array(particleCount); // Ukuran tiap partikel berbeda
+const sizes = new Float32Array(particleCount);
 
-// Inisialisasi posisi awal (Scatter)
+// Init Scatter
 for (let i = 0; i < particleCount; i++) {
     const i3 = i * 3;
-    // Sebar di area yang sangat luas
     positions[i3] = (Math.random() - 0.5) * 300;
     positions[i3+1] = (Math.random() - 0.5) * 300;
     positions[i3+2] = (Math.random() - 0.5) * 300;
-
+    
     targets[i3] = positions[i3];
     targets[i3+1] = positions[i3+1];
     targets[i3+2] = positions[i3+2];
 
-    // Warna Putih Kebiruan (Bintang)
-    colors[i3] = 0.8; colors[i3+1] = 0.9; colors[i3+2] = 1.0;
-    // Variasi ukuran agar ada kesan kedalaman
-    sizes[i] = 0.5 + Math.random() * 1.0; 
+    colors[i3] = 1; colors[i3+1] = 1; colors[i3+2] = 1; 
+    sizes[i] = 0.5 + Math.random(); 
 }
 
 geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-// Material Kustom agar bisa pakai tekstur bulat dan variasi ukuran
 const material = new THREE.PointsMaterial({
-    size: 1.0, // Ukuran dasar
-    map: particleTexture, // PAKAI TEKSTUR BULAT
-    vertexColors: true,
-    blending: THREE.AdditiveBlending, // Efek cahaya berpendar
-    depthWrite: false,
-    transparent: true,
-    opacity: 0.7,
-    sizeAttenuation: true // Partikel yang jauh terlihat lebih kecil (efek 3D)
+    size: 1.0, 
+    map: particleTexture, vertexColors: true, blending: THREE.AdditiveBlending, 
+    depthWrite: false, transparent: true, opacity: 0.9, sizeAttenuation: true
 });
 
 const particles = new THREE.Points(geometry, material);
 scene.add(particles);
 
 
-// --- PERHITUNGAN BENTUK (MOLDS) ---
+// --- RUMUS BENTUK ---
 
-// 1. SATURNUS 3D VOLUMETRIC (Isi bola padat)
+// 1. SATURNUS
 function calculateSaturn() {
-    const planetCount = Math.floor(particleCount * 0.5); // 50% untuk planet
-    const planetRadius = 7;
-    
+    const planetCount = Math.floor(particleCount * 0.6);
+    const planetRadius = 8;
+
     for(let i=0; i<particleCount; i++){
         const i3 = i * 3;
         let x, y, z, r, g, b;
 
-        if (i < planetCount) {
-            // --- BOLA 3D PADAT (Volumetric Sphere) ---
-            // Rumus ini mengisi bagian dalam bola secara merata
-            const u = Math.random();
-            const v = Math.random();
-            const theta = u * 2.0 * Math.PI;
-            const phi = Math.acos(2.0 * v - 1.0);
-            // Akar pangkat 3 agar distribusi merata dari pusat ke kulit
-            const radius = Math.cbrt(Math.random()) * planetRadius;
-
-            x = radius * Math.sin(phi) * Math.cos(theta);
-            y = radius * Math.sin(phi) * Math.sin(theta);
-            z = radius * Math.cos(phi);
-
-            // Warna Emas/Oranye dengan sedikit variasi
-            r=1.0; g=0.7 + Math.random()*0.2; b=0.2;
-        } else {
-            // --- CINCIN PADAT ---
-            const ringTotal = particleCount - planetCount;
+        if (i < planetCount) { // Planet
+            const phi = Math.acos(-1 + (2 * i) / planetCount);
+            const theta = Math.sqrt(planetCount * Math.PI) * phi;
+            x = planetRadius * Math.cos(theta) * Math.sin(phi);
+            y = planetRadius * Math.sin(theta) * Math.sin(phi);
+            z = planetRadius * Math.cos(phi);
+            r=1.0; g=0.7; b=0.2; 
+        } else { // Cincin
+            const radius = 10 + Math.random() * 6;
             const angle = Math.random() * Math.PI * 2;
-            // Radius acak antara 9 sampai 14
-            const radius = 9 + Math.random() * 5; 
             x = radius * Math.cos(angle);
             z = radius * Math.sin(angle);
-            y = (Math.random()-0.5) * 0.8; // Sedikit tebal
-
-            // Warna Cincin Krem Pucat
-            r=0.8; g=0.7; b=0.6;
+            y = (Math.random() - 0.5) * 0.5;
+            r=0.9; g=0.8; b=0.7;
         }
-        
-        targets[i3] = x; targets[i3+1] = y; targets[i3+2] = z;
-        colors[i3] = r; colors[i3+1] = g; colors[i3+2] = b;
+        targets[i3]=x; targets[i3+1]=y; targets[i3+2]=z;
+        colors[i3]=r; colors[i3+1]=g; colors[i3+2]=b;
     }
 }
 
-// 2. TEKS JELAS (Menggunakan Surface Sampler)
-let sampler = null; // Penampung sampler
-const fontLoader = new FontLoader();
-
-fontLoader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', 
-    (font) => {
-        const textGeo = new TextGeometry('I LOVE YOU', {
-            font: font,
-            size: 5, // Ukuran teks diperbesar
-            height: 1, // Ketebalan 3D
-            curveSegments: 12,
-            bevelEnabled: true,
-            bevelThickness: 0.2,
-            bevelSize: 0.1,
-            bevelSegments: 5
-        });
-        textGeo.center();
-        
-        // Buat Mesh sementara (tidak ditampilkan) untuk di-sampling
-        const textMesh = new THREE.Mesh(textGeo);
-        // MeshSurfaceSampler akan mencari titik-titik acak di permukaan mesh tsb
-        sampler = new MeshSurfaceSampler(textMesh).build();
-        console.log("Font & Sampler ready!");
-    }
-);
-
-const tempPosition = new THREE.Vector3(); // Variabel bantuan
-
-function calculateText() {
-    if (!sampler) return; // Tunggu sampler siap
+// 2. HEART (DIPERBAIKI: GEMBUL)
+function calculateHeart() {
+    const scale = 11; // Besar
 
     for(let i=0; i<particleCount; i++) {
         const i3 = i * 3;
+        let x, y, z;
         
-        // Ambil satu titik acak di permukaan teks
-        sampler.sample(tempPosition);
+        let attempt = 0;
+        while (true) {
+            // Area Random melebar (Gembul)
+            x = (Math.random() - 0.5) * 3.5; 
+            y = (Math.random() - 0.5) * 3; 
+            z = (Math.random() - 0.5) * 2; // Tebal
+            
+            // Rumus Heart
+            const x2 = x * 1.2; 
+            const y2 = y;
+            const z2 = z * 1.5;
 
-        targets[i3] = tempPosition.x;
-        targets[i3+1] = tempPosition.y;
-        targets[i3+2] = tempPosition.z;
+            const a = x2*x2 + (9/4)*y2*y2 + z2*z2 - 1;
+            
+            if (a*a*a - x2*x2*z2*z2*z2 - (9/80)*y2*y2*z2*z2*z2 <= 0) break;
+            
+            attempt++;
+            if (attempt > 100) break;
+        }
 
-        // Warna Pink Neon Cerah
-        colors[i3] = 1.0; colors[i3+1] = 0.1; colors[i3+2] = 0.6 + Math.random()*0.4;
+        targets[i3] = x * scale;     
+        targets[i3+1] = y * scale;   
+        targets[i3+2] = z * scale * 1.5; 
+
+        // Warna Pink Gradasi
+        const rand = Math.random();
+        colors[i3] = 1.0; 
+        colors[i3+1] = 0.0 + rand * 0.3; 
+        colors[i3+2] = 0.2 + rand * 0.5; 
     }
 }
 
-// 3. SCATTER (Menyebar Jauh)
+// 3. TEXT "I LOVE YOU"
+let sampler = null;
+const fontLoader = new FontLoader();
+fontLoader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', (font) => {
+    const textGeo = new TextGeometry('I LOVE YOU', {
+        font: font, size: 4.5, height: 1, curveSegments: 12,
+        bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.05, bevelSegments: 3
+    });
+    textGeo.center();
+    const textMesh = new THREE.Mesh(textGeo);
+    sampler = new MeshSurfaceSampler(textMesh).build();
+});
+const tempPosition = new THREE.Vector3();
+
+function calculateText() {
+    if (!sampler) return;
+    for(let i=0; i<particleCount; i++) {
+        const i3 = i * 3;
+        sampler.sample(tempPosition);
+        targets[i3] = tempPosition.x; 
+        targets[i3+1] = tempPosition.y; 
+        targets[i3+2] = tempPosition.z;
+        colors[i3] = 0.2; colors[i3+1] = 0.6; colors[i3+2] = 1.0;
+    }
+}
+
 function calculateScatter() {
     for(let i=0; i<particleCount; i++) {
         const i3 = i * 3;
-        targets[i3] = (Math.random()-0.5) * 300;
-        targets[i3+1] = (Math.random()-0.5) * 300;
-        targets[i3+2] = (Math.random()-0.5) * 300;
-        
-        // Warna Bintang Putih/Biru
-        colors[i3] = 0.8; colors[i3+1] = 0.9; colors[i3+2] = 1.0;
+        targets[i3] = (Math.random()-0.5) * 200;
+        targets[i3+1] = (Math.random()-0.5) * 200;
+        targets[i3+2] = (Math.random()-0.5) * 200;
+        colors[i3] = 1; colors[i3+1] = 1; colors[i3+2] = 1;
     }
 }
 
-// --- LOGIC TRANSISI ---
+
+// --- TRANSISI & ROTASI BERDIRI ---
 function morphTo(shape) {
     if (currentShape === shape) return;
-    if (shape === 'text' && !sampler) return; // Cegah error jika font belum siap
-
     currentShape = shape;
 
     if (shape === 'saturn') {
         calculateSaturn();
-        // Reset rotasi wadah, kita akan miringkan lewat interaksi tangan
         particles.rotation.set(0, 0, 0); 
-    } else if (shape === 'text') {
+    } 
+    else if (shape === 'heart') {
+        calculateHeart();
+        // PAKSA BERDIRI: Rotasi X -90 derajat
+        particles.rotation.set(-Math.PI / 2, 0, 0); 
+    } 
+    else if (shape === 'text') {
         calculateText();
-        particles.rotation.set(0, 0, 0);
-    } else {
+        particles.rotation.set(0, 0, 0); 
+    } 
+    else {
         calculateScatter();
         particles.rotation.set(0, 0, 0);
     }
-    
+
     geometry.attributes.color.needsUpdate = true;
 }
 
-// --- ANIMASI UTAMA ---
+
+// --- ANIMASI LOOP ---
 function animate() {
     requestAnimationFrame(animate);
 
     const gesture = window.handResult?.gesture;
     const landmarks = window.handResult?.landmarks;
 
-    // 1. Tentukan Bentuk
-    if (gesture === 'Fist') {
-        morphTo('saturn');
-    } else if (gesture === 'Love') {
-        morphTo('text');
-    } else {
-        morphTo('scatter');
-    }
+    if (gesture === 'Fist') morphTo('saturn');
+    else if (gesture === 'Heart') morphTo('heart');
+    else if (gesture === 'ILY') morphTo('text');
+    else morphTo('scatter');
 
-    // 2. Gerakkan Partikel (Lerp yang lebih halus)
+    // Update Lerp
     const posAttr = geometry.attributes.position;
     const colAttr = geometry.attributes.color;
-    
     for (let i = 0; i < particleCount * 3; i++) {
-        // Kecepatan 0.06 memberikan transisi yang enak dilihat
-        posAttr.array[i] += (targets[i] - posAttr.array[i]) * 0.06;
-        colAttr.array[i] += (colors[i] - colAttr.array[i]) * 0.06;
+        posAttr.array[i] += (targets[i] - posAttr.array[i]) * 0.08;
+        colAttr.array[i] += (colors[i] - colAttr.array[i]) * 0.05;
     }
     posAttr.needsUpdate = true;
     colAttr.needsUpdate = true;
 
-    // 3. Interaksi Tangan 3D
-    if (landmarks && gesture !== 'None') {
-        // Mapping koordinat tangan (0-1) ke ruang 3D yang luas
-        const handX = (landmarks[9].x - 0.5) * 2; // Range -1 ke 1
-        const handY = (landmarks[9].y - 0.5) * 2;
+    // --- LOGIKA ROTASI YANG DIPERBAIKI ---
+    if (landmarks && gesture !== 'None' && gesture !== 'Scatter') {
+        const hx = (landmarks[9].x - 0.5) * 2; 
+        const hy = (landmarks[9].y - 0.5) * 2; 
 
-        // Posisi mengikuti tangan
-        particles.position.x = THREE.MathUtils.lerp(particles.position.x, -handX * 30, 0.1);
-        particles.position.y = THREE.MathUtils.lerp(particles.position.y, -handY * 20, 0.1);
-        
-        // Rotasi Interaktif
-        particles.rotation.y += 0.01; // Selalu berputar pelan pada sumbu Y
-        
-        if (gesture === 'saturn') {
-            // Jika Saturnus, miringkan sumbu X dan Z berdasarkan posisi tangan agar terasa 3D
-            particles.rotation.x = THREE.MathUtils.lerp(particles.rotation.x, handY * 0.5 + 0.3, 0.1);
-            particles.rotation.z = THREE.MathUtils.lerp(particles.rotation.z, handX * 0.5, 0.1);
+        particles.position.x = THREE.MathUtils.lerp(particles.position.x, -hx * 20, 0.1);
+        particles.position.y = THREE.MathUtils.lerp(particles.position.y, -hy * 15, 0.1);
+
+        if (currentShape === 'heart') {
+            // KHUSUS HEART: Putar sumbu Z (karena sudah dimiringkan -90 di X)
+            // Ini akan membuatnya berputar Kiri-Kanan seperti Globe (Normal)
+            particles.rotation.z += 0.01; 
+            
+            // Interaksi tangan (Tilt)
+            particles.rotation.y = hx * 0.5;
         } else {
-            // Jika teks, jaga agar tetap tegak tapi sedikit miring mengikuti tangan
-            particles.rotation.x = THREE.MathUtils.lerp(particles.rotation.x, handY * 0.2, 0.1);
-            particles.rotation.z = THREE.MathUtils.lerp(particles.rotation.z, handX * 0.2, 0.1);
+            // UNTUK SATURNUS & TEXT: Putar sumbu Y biasa
+            particles.rotation.y += 0.01; 
+            
+            // Interaksi tangan
+            particles.rotation.x = THREE.MathUtils.lerp(particles.rotation.x, hy * 0.5, 0.1);
+            particles.rotation.z = THREE.MathUtils.lerp(particles.rotation.z, hx * 0.5, 0.1);
         }
 
     } else {
-        // Rotasi idle saat menyebar
-        particles.rotation.y += 0.003;
-        particles.rotation.x *= 0.95; // Kembali tegak pelan-pelan
-        particles.rotation.z *= 0.95;
+        // IDLE ANIMATION
+        if (currentShape === 'heart') {
+            particles.rotation.z += 0.005; // Putar globe idle
+        } else {
+            particles.rotation.y += 0.002;
+            particles.rotation.x *= 0.95;
+            particles.rotation.z *= 0.95;
+        }
     }
 
     renderer.render(scene, camera);
 }
 
-// Handle Resize
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
