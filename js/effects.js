@@ -26,7 +26,10 @@ const targets = new Float32Array(particleCount * 3);
 const colors = new Float32Array(particleCount * 3);
 const sizes = new Float32Array(particleCount);
 
-// Init Scatter
+// Helper warna
+const tempColor = new THREE.Color();
+
+// --- INIT SCATTER (WARNA WARNI) ---
 for (let i = 0; i < particleCount; i++) {
     const i3 = i * 3;
     positions[i3] = (Math.random() - 0.5) * 300;
@@ -37,7 +40,16 @@ for (let i = 0; i < particleCount; i++) {
     targets[i3+1] = positions[i3+1];
     targets[i3+2] = positions[i3+2];
 
-    colors[i3] = 1; colors[i3+1] = 1; colors[i3+2] = 1; 
+    // MODIFIKASI WARNA: Random HSL (Rainbow)
+    // Hue: 0.0 s/d 1.0 (Semua spektrum warna)
+    // Saturation: 0.8 (Cerah)
+    // Lightness: 0.6 (Terang)
+    tempColor.setHSL(Math.random(), 0.8, 0.6);
+    
+    colors[i3] = tempColor.r; 
+    colors[i3+1] = tempColor.g; 
+    colors[i3+2] = tempColor.b; 
+    
     sizes[i] = 0.5 + Math.random(); 
 }
 
@@ -72,23 +84,23 @@ function calculateSaturn() {
             x = planetRadius * Math.cos(theta) * Math.sin(phi);
             y = planetRadius * Math.sin(theta) * Math.sin(phi);
             z = planetRadius * Math.cos(phi);
-            r=1.0; g=0.7; b=0.2; 
+            r=1.0; g=0.7; b=0.2; // Emas
         } else { // Cincin
             const radius = 10 + Math.random() * 6;
             const angle = Math.random() * Math.PI * 2;
             x = radius * Math.cos(angle);
             z = radius * Math.sin(angle);
             y = (Math.random() - 0.5) * 0.5;
-            r=0.9; g=0.8; b=0.7;
+            r=0.9; g=0.8; b=0.7; // Putih Krem
         }
         targets[i3]=x; targets[i3+1]=y; targets[i3+2]=z;
         colors[i3]=r; colors[i3+1]=g; colors[i3+2]=b;
     }
 }
 
-// 2. HEART (DIPERBAIKI: GEMBUL)
+// 2. HEART (Berdiri & Gembul)
 function calculateHeart() {
-    const scale = 11; // Besar
+    const scale = 11; 
 
     for(let i=0; i<particleCount; i++) {
         const i3 = i * 3;
@@ -96,12 +108,10 @@ function calculateHeart() {
         
         let attempt = 0;
         while (true) {
-            // Area Random melebar (Gembul)
             x = (Math.random() - 0.5) * 3.5; 
             y = (Math.random() - 0.5) * 3; 
-            z = (Math.random() - 0.5) * 2; // Tebal
+            z = (Math.random() - 0.5) * 2; 
             
-            // Rumus Heart
             const x2 = x * 1.2; 
             const y2 = y;
             const z2 = z * 1.5;
@@ -118,7 +128,7 @@ function calculateHeart() {
         targets[i3+1] = y * scale;   
         targets[i3+2] = z * scale * 1.5; 
 
-        // Warna Pink Gradasi
+        // Warna Pink Gradasi (Tetap Pink untuk Heart)
         const rand = Math.random();
         colors[i3] = 1.0; 
         colors[i3+1] = 0.0 + rand * 0.3; 
@@ -148,22 +158,29 @@ function calculateText() {
         targets[i3] = tempPosition.x; 
         targets[i3+1] = tempPosition.y; 
         targets[i3+2] = tempPosition.z;
+        // Warna Biru Neon (Tetap Biru untuk Text)
         colors[i3] = 0.2; colors[i3+1] = 0.6; colors[i3+2] = 1.0;
     }
 }
 
+// 4. CALCULATE SCATTER (WARNA WARNI)
 function calculateScatter() {
     for(let i=0; i<particleCount; i++) {
         const i3 = i * 3;
         targets[i3] = (Math.random()-0.5) * 200;
         targets[i3+1] = (Math.random()-0.5) * 200;
         targets[i3+2] = (Math.random()-0.5) * 200;
-        colors[i3] = 1; colors[i3+1] = 1; colors[i3+2] = 1;
+        
+        // MODIFIKASI WARNA: Random HSL lagi saat menyebar
+        tempColor.setHSL(Math.random(), 0.8, 0.6);
+        colors[i3] = tempColor.r; 
+        colors[i3+1] = tempColor.g; 
+        colors[i3+2] = tempColor.b;
     }
 }
 
 
-// --- TRANSISI & ROTASI BERDIRI ---
+// --- TRANSISI ---
 function morphTo(shape) {
     if (currentShape === shape) return;
     currentShape = shape;
@@ -174,7 +191,7 @@ function morphTo(shape) {
     } 
     else if (shape === 'heart') {
         calculateHeart();
-        // PAKSA BERDIRI: Rotasi X -90 derajat
+        // Berdiri tegak
         particles.rotation.set(-Math.PI / 2, 0, 0); 
     } 
     else if (shape === 'text') {
@@ -190,19 +207,20 @@ function morphTo(shape) {
 }
 
 
-// --- ANIMASI LOOP ---
+// --- ANIMASI ---
 function animate() {
     requestAnimationFrame(animate);
 
     const gesture = window.handResult?.gesture;
     const landmarks = window.handResult?.landmarks;
 
+    // --- MAPPING GESTURE ---
     if (gesture === 'Fist') morphTo('saturn');
     else if (gesture === 'Heart') morphTo('heart');
     else if (gesture === 'ILY') morphTo('text');
     else morphTo('scatter');
 
-    // Update Lerp
+    // --- UPDATE LERP ---
     const posAttr = geometry.attributes.position;
     const colAttr = geometry.attributes.color;
     for (let i = 0; i < particleCount * 3; i++) {
@@ -212,7 +230,7 @@ function animate() {
     posAttr.needsUpdate = true;
     colAttr.needsUpdate = true;
 
-    // --- LOGIKA ROTASI YANG DIPERBAIKI ---
+    // --- INTERAKSI TANGAN ---
     if (landmarks && gesture !== 'None' && gesture !== 'Scatter') {
         const hx = (landmarks[9].x - 0.5) * 2; 
         const hy = (landmarks[9].y - 0.5) * 2; 
@@ -221,25 +239,18 @@ function animate() {
         particles.position.y = THREE.MathUtils.lerp(particles.position.y, -hy * 15, 0.1);
 
         if (currentShape === 'heart') {
-            // KHUSUS HEART: Putar sumbu Z (karena sudah dimiringkan -90 di X)
-            // Ini akan membuatnya berputar Kiri-Kanan seperti Globe (Normal)
             particles.rotation.z += 0.01; 
-            
-            // Interaksi tangan (Tilt)
             particles.rotation.y = hx * 0.5;
         } else {
-            // UNTUK SATURNUS & TEXT: Putar sumbu Y biasa
             particles.rotation.y += 0.01; 
-            
-            // Interaksi tangan
             particles.rotation.x = THREE.MathUtils.lerp(particles.rotation.x, hy * 0.5, 0.1);
             particles.rotation.z = THREE.MathUtils.lerp(particles.rotation.z, hx * 0.5, 0.1);
         }
 
     } else {
-        // IDLE ANIMATION
+        // IDLE
         if (currentShape === 'heart') {
-            particles.rotation.z += 0.005; // Putar globe idle
+            particles.rotation.z += 0.005; 
         } else {
             particles.rotation.y += 0.002;
             particles.rotation.x *= 0.95;
