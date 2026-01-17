@@ -18,35 +18,44 @@ function detectGesture(landmarks) {
     const pinkyPip = landmarks[18];
 
     // --- STATUS JARI (NAIK/TURUN) ---
-    // Ingat: Y makin kecil = makin ke atas layar
+    // Y makin kecil = makin ke atas layar
     const isIndexUp = indexTip.y < indexPip.y;
     const isMiddleUp = middleTip.y < middlePip.y;
     const isRingUp = ringTip.y < ringPip.y;
     const isPinkyUp = pinkyTip.y < pinkyPip.y;
     
-    // Cek Jempol (Jempol agak beda, kita cek apakah dia terbuka lebar ke samping)
-    // Tapi untuk ILY sign, biasanya cukup cek apakah 3 jari utama (Telunjuk, Kelingking) naik, dan tengah turun.
-
     // --- LOGIKA DETEKSI BARU ---
 
-    // 1. CEK ILY SIGN (Spider-man / Rock) 🤟 -> Teks I LOVE YOU
+    // 1. CEK POINT (TUNJUK) ☝️ -> BLACK HOLE (BARU!)
+    // Syarat: Hanya Telunjuk NAIK. Tengah, Manis, Kelingking TURUN.
+    if (isIndexUp && !isMiddleUp && !isRingUp && !isPinkyUp) {
+        return "Point"; // Trigger Black Hole
+    }
+
+    // 2. CEK ILY (TEKS) 🤟
     // Syarat: Telunjuk & Kelingking NAIK. Tengah & Manis TURUN.
     if (isIndexUp && !isMiddleUp && !isRingUp && isPinkyUp) {
-        return "ILY"; // Ini trigger teks
+        return "ILY";
     }
 
-    // 2. CEK V-SIGN (Peace) ✌️ -> BENTUK HATI
+    // 3. CEK HEART (V-SIGN) ✌️
     // Syarat: Telunjuk & Tengah NAIK. Manis & Kelingking TURUN.
     if (isIndexUp && isMiddleUp && !isRingUp && !isPinkyUp) {
-        return "Heart"; // Ini trigger bentuk hati
+        return "Heart";
     }
 
-    // 3. CEK FIST (Kepalan) ✊ -> SATURNUS
-    // Syarat: Semua jari (selain jempol) TURUN.
+    // 4. CEK FIST (SATURNUS) ✊
+    // Syarat: Semua jari utama TURUN.
     if (!isIndexUp && !isMiddleUp && !isRingUp && !isPinkyUp) {
-        return "Fist"; // Ini trigger Saturnus
+        return "Fist";
     }
 
-    // 4. Default
+    // 5. CEK PINKY (WAJAH) 🤙
+    // Syarat: Hanya Kelingking NAIK.
+    if (!isIndexUp && !isMiddleUp && !isRingUp && isPinkyUp) {
+        return "Pinky";
+    }
+
+    // Default
     return "Scatter";
 }
